@@ -19,8 +19,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "flash.helloWorld",
-        "title": "Hello World"
+        "command": "flash.flash",
+        "title": "flash"
       }
     ]
   },
