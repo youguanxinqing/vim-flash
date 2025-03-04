@@ -15,7 +15,7 @@
         "vscodevim.vim"
       ],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "${defaultBuildTask}"
+      "preLaunchTask": "watch"
     }
   ]
 }
