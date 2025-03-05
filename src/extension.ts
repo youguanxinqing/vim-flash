@@ -20,7 +20,13 @@ async function cancel_() {
   }
 }
 
-const a = "a".charCodeAt(0);
+type PlaceHolder = {
+  char: string;
+  position: vscode.Position;
+  decoration: vscode.TextEditorDecorationType;
+};
+
+const placeholderChars = "fjdksla;ghrueiwoqptyvncmx,z.b";
 
 async function flash(editor: vscode.TextEditor) {
   const dim = vscode.window.createTextEditorDecorationType({
@@ -33,7 +39,7 @@ async function flash(editor: vscode.TextEditor) {
   await vscode.commands.executeCommand("setContext", "flash.active", true);
   editor.setDecorations(dim, editor.visibleRanges);
   let lastRanges: vscode.Range[] | undefined;
-  let lastPlaceholderDecorations: vscode.TextEditorDecorationType[] = [];
+  let lastPlaceholders: PlaceHolder[] = [];
   const typeCommand = vscode.commands.registerCommand(
     "type",
     ({ text }: { text: string }) => {
@@ -41,15 +47,23 @@ async function flash(editor: vscode.TextEditor) {
         typeCommand.dispose();
         dim.dispose();
         highlight.dispose();
-        lastPlaceholderDecorations.forEach((d) => d.dispose());
+        lastPlaceholders.forEach((p) => p.decoration.dispose());
+        lastPlaceholders = [];
         await vscode.commands.executeCommand(
           "setContext",
           "flash.active",
           false,
         );
       };
-      lastPlaceholderDecorations.forEach((d) => d.dispose());
-      lastPlaceholderDecorations = [];
+      for (const ph of lastPlaceholders) {
+        if (ph.char === text) {
+          editor.selection = new vscode.Selection(ph.position, ph.position);
+          cancel();
+          return;
+        }
+      }
+      lastPlaceholders.forEach((p) => p.decoration.dispose());
+      lastPlaceholders = [];
       const ranges: vscode.Range[] = [];
       if (!lastRanges) {
         for (const range of editor.visibleRanges) {
@@ -86,7 +100,8 @@ async function flash(editor: vscode.TextEditor) {
         }
       }
       if (ranges.length === 1) {
-        editor.selection = new vscode.Selection(ranges[0].end, ranges[0].end);
+        const end = ranges[0].end;
+        editor.selection = new vscode.Selection(end, end);
         cancel();
         return;
       }
@@ -96,8 +111,29 @@ async function flash(editor: vscode.TextEditor) {
       }
       lastRanges = ranges;
       const highlightRanges: vscode.Range[] = [];
-      for (const [i, range] of ranges.entries()) {
-        const placeholderChar = String.fromCharCode(a + i);
+      const bannedChars = new Set<string>();
+      for (const r of ranges) {
+        const nextCharRange = new vscode.Range(r.end, r.end.translate(0, 1));
+        const nextChar = editor.document.getText(nextCharRange);
+        bannedChars.add(nextChar);
+      }
+      let i = 0;
+      const nextPlaceholderChar = () => {
+        while (true) {
+          const placeholderChar = placeholderChars[i++];
+          if (placeholderChar === undefined) {
+            return undefined;
+          }
+          if (!bannedChars.has(placeholderChar)) {
+            return placeholderChar;
+          }
+        }
+      };
+      for (const range of ranges) {
+        const placeholderChar = nextPlaceholderChar();
+        if (placeholderChar === undefined) {
+          break;
+        }
         const placeholderDecoration = placeholder(placeholderChar);
         const placeholderRange = new vscode.Range(
           range.start,
@@ -108,7 +144,11 @@ async function flash(editor: vscode.TextEditor) {
           range.end,
         );
         highlightRanges.push(highlightRange);
-        lastPlaceholderDecorations.push(placeholderDecoration);
+        lastPlaceholders.push({
+          char: placeholderChar,
+          position: range.start,
+          decoration: placeholderDecoration,
+        });
         editor.setDecorations(placeholderDecoration, [placeholderRange]);
       }
       editor.setDecorations(highlight, highlightRanges);
