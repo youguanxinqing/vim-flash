@@ -2,7 +2,7 @@
   "name": "flash-jump",
   "displayName": "Flash Jump",
   "description": "Flash jump to anywhere in the editor",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "bzy-debug",
   "license": "MIT",
   "repository": {
