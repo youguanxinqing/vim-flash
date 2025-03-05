@@ -22,11 +22,11 @@
     "commands": [
       {
         "command": "flash-jump.flash",
-        "title": "Flash: start"
+        "title": "Flash Jump: start"
       },
       {
         "command": "flash-jump.cancel",
-        "title": "Flash: cancel"
+        "title": "Flash Jump: cancel"
       }
     ],
     "keybindings": [

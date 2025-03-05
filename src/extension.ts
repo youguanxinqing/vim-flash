@@ -8,7 +8,7 @@ function placeholder(char: string): vscode.TextEditorDecorationType {
   return vscode.window.createTextEditorDecorationType({
     before: {
       contentText: char,
-      backgroundColor: "rgb(60, 179, 113)",
+      backgroundColor: "rgb(255, 105, 180)",
       color: "rgb(255, 255, 255)",
       textDecoration: `none; z-index: 1; position: absolute`,
     },
@@ -73,6 +73,11 @@ async function flash(editor: vscode.TextEditor) {
           vscode.TextEditorRevealType.InCenter,
         );
       };
+      if (lastPlaceholders.length === 1 && text === "\n") {
+        jump(lastPlaceholders[0].position);
+        cancel();
+        return;
+      }
       for (const ph of lastPlaceholders) {
         if (ph.char === text) {
           jump(ph.position);
@@ -117,11 +122,11 @@ async function flash(editor: vscode.TextEditor) {
           }
         }
       }
-      if (ranges.length === 1) {
-        jump(ranges[0].end);
-        cancel();
-        return;
-      }
+      // if (ranges.length === 1) {
+      //   jump(ranges[0].end);
+      //   cancel();
+      //   return;
+      // }
       if (ranges.length === 0) {
         cancel();
         return;
