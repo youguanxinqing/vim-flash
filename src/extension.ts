@@ -172,7 +172,6 @@ async function flash(editor: vscode.TextEditor) {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Congratulations, your extension "flash" is now active!');
   context.subscriptions.push(
     vscode.commands.registerCommand("flash.cancel", cancel_),
     vscode.commands.registerTextEditorCommand("flash.flash", flash),
