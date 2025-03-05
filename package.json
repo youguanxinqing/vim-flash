@@ -1,7 +1,7 @@
 {
-  "name": "flash",
-  "displayName": "neovim flash",
-  "description": "neovim's flash extension in vscode(VS Code)",
+  "name": "flash-jump",
+  "displayName": "Flash Jump",
+  "description": "Flash jump to anywhere in the editor",
   "version": "0.0.1",
   "publisher": "bzy-debug",
   "license": "MIT",
@@ -21,19 +21,19 @@
   "contributes": {
     "commands": [
       {
-        "command": "flash.flash",
-        "title": "flash"
+        "command": "flash-jump.flash",
+        "title": "Flash: start"
       },
       {
-        "command": "flash.cancel",
-        "title": "cancel"
+        "command": "flash-jump.cancel",
+        "title": "Flash: cancel"
       }
     ],
     "keybindings": [
       {
         "key": "escape",
-        "command": "flash.cancel",
-        "when": "editorTextFocus && flash.active"
+        "command": "flash-jump.cancel",
+        "when": "editorTextFocus && flash-jump.active"
       }
     ]
   },

@@ -1,10 +1,14 @@
 import * as vscode from "vscode";
 
+function charEqual(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
 function placeholder(char: string): vscode.TextEditorDecorationType {
   return vscode.window.createTextEditorDecorationType({
     before: {
       contentText: char,
-      backgroundColor: "rgb(50, 205, 50)",
+      backgroundColor: "rgb(60, 179, 113)",
       color: "rgb(255, 255, 255)",
       textDecoration: `none; z-index: 1; position: absolute`,
     },
@@ -29,6 +33,7 @@ type PlaceHolder = {
 const placeholderChars = "fjdksla;ghrueiwoqptyvncmx,z.b";
 
 async function flash(editor: vscode.TextEditor) {
+  await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
   const dim = vscode.window.createTextEditorDecorationType({
     textDecoration: `none; color: rgb(119, 119, 119);`,
   });
@@ -36,7 +41,6 @@ async function flash(editor: vscode.TextEditor) {
     backgroundColor: "rgb(30, 144, 255)",
     color: "rgb(255, 255, 255)",
   });
-  await vscode.commands.executeCommand("setContext", "flash.active", true);
   editor.setDecorations(dim, editor.visibleRanges);
   let lastRanges: vscode.Range[] | undefined;
   let lastPlaceholders: PlaceHolder[] = [];
@@ -51,7 +55,7 @@ async function flash(editor: vscode.TextEditor) {
         lastPlaceholders = [];
         await vscode.commands.executeCommand(
           "setContext",
-          "flash.active",
+          "flash-jump.active",
           false,
         );
       };
@@ -64,6 +68,10 @@ async function flash(editor: vscode.TextEditor) {
             position,
           );
         }
+        editor.revealRange(
+          new vscode.Range(position, position),
+          vscode.TextEditorRevealType.InCenter,
+        );
       };
       for (const ph of lastPlaceholders) {
         if (ph.char === text) {
@@ -87,7 +95,7 @@ async function flash(editor: vscode.TextEditor) {
             } else {
               column++;
             }
-            if (content[i] === text) {
+            if (charEqual(content[i], text)) {
               ranges.push(
                 new vscode.Range(
                   new vscode.Position(line, column - 1),
@@ -104,7 +112,7 @@ async function flash(editor: vscode.TextEditor) {
             end: range.end.translate(0, 1),
           });
           const nextChar = editor.document.getText(nextCharRange);
-          if (nextChar === text) {
+          if (charEqual(nextChar, text)) {
             ranges.push(range.union(nextCharRange));
           }
         }
@@ -123,7 +131,7 @@ async function flash(editor: vscode.TextEditor) {
       const bannedChars = new Set<string>();
       for (const r of ranges) {
         const nextCharRange = new vscode.Range(r.end, r.end.translate(0, 1));
-        const nextChar = editor.document.getText(nextCharRange);
+        const nextChar = editor.document.getText(nextCharRange).toLowerCase();
         bannedChars.add(nextChar);
       }
       let i = 0;
@@ -167,14 +175,18 @@ async function flash(editor: vscode.TextEditor) {
     dim.dispose();
     highlight.dispose();
     typeCommand.dispose();
-    await vscode.commands.executeCommand("setContext", "flash.active", false);
+    await vscode.commands.executeCommand(
+      "setContext",
+      "flash-jump.active",
+      false,
+    );
   };
 }
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.commands.registerCommand("flash.cancel", cancel_),
-    vscode.commands.registerTextEditorCommand("flash.flash", flash),
+    vscode.commands.registerCommand("flash-jump.cancel", cancel_),
+    vscode.commands.registerTextEditorCommand("flash-jump.flash", flash),
   );
 }
 
