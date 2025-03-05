@@ -55,9 +55,19 @@ async function flash(editor: vscode.TextEditor) {
           false,
         );
       };
+      const jump = (position: vscode.Position) => {
+        if (editor.selection.isEmpty) {
+          editor.selection = new vscode.Selection(position, position);
+        } else {
+          editor.selection = new vscode.Selection(
+            editor.selection.anchor,
+            position,
+          );
+        }
+      };
       for (const ph of lastPlaceholders) {
         if (ph.char === text) {
-          editor.selection = new vscode.Selection(ph.position, ph.position);
+          jump(ph.position);
           cancel();
           return;
         }
@@ -100,8 +110,7 @@ async function flash(editor: vscode.TextEditor) {
         }
       }
       if (ranges.length === 1) {
-        const end = ranges[0].end;
-        editor.selection = new vscode.Selection(end, end);
+        jump(ranges[0].end);
         cancel();
         return;
       }
