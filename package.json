@@ -6,7 +6,7 @@
   "publisher": "bzy-debug",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/bzy-debug/vscode-extension-flash"
+    "url": "https://github.com/bzy-debug-orgnization/vscode-extension-flash"
   },
   "engines": {
     "vscode": "^1.97.0"
