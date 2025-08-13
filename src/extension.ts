@@ -18,6 +18,8 @@ function placeholder(char: string): vscode.TextEditorDecorationType {
 let cancel: (() => Promise<void>) | undefined = undefined;
 
 async function cancel_() {
+  statusBarBlock.dispose(); 
+  
   if (cancel) {
     await cancel();
     cancel = undefined;
@@ -44,16 +46,77 @@ const createFlashDecorationTypes = () => {
   };
 };
 
+async function enableFlashJumpState() {
+  await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
+}
+
+async function disableFlashJumpState() {
+  await vscode.commands.executeCommand(
+    "setContext",
+    "flash-jump.active",
+    false
+  );
+}
+
+function findAllRangesByChar(
+  editor: vscode.TextEditor,
+  char: string
+): vscode.Range[] {
+  const ranges: vscode.Range[] = [];
+  // start to interate the text on screen
+  for (const range of editor.visibleRanges) {
+    const content = editor.document.getText(range);
+    let line = range.start.line;
+    let column = 0;
+    for (let i = 0; i < content.length; i++) {
+      if (content[i] === "\n") {
+        line++;
+        column = 0;
+      } else {
+        column++;
+      }
+      if (charEqual(content[i], char)) {
+        ranges.push(
+          new vscode.Range(
+            new vscode.Position(line, column - 1),
+            new vscode.Position(line, column)
+          )
+        );
+      }
+    }
+  }
+  return ranges;
+}
+
+const statusBarBlock = {
+  item: (undefined as vscode.StatusBarItem | undefined),
+  dispose() {
+    statusBarBlock.item?.dispose();
+    statusBarBlock.item = undefined;
+  },
+  showText(inputedChars: string[]) {
+    statusBarBlock.dispose();
+
+    statusBarBlock.item = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      3000
+    );
+    statusBarBlock.item.text = "⚡" + inputedChars.join("");
+    statusBarBlock.item.show();
+  },
+};
+
 async function flash(editor: vscode.TextEditor) {
-  const {dim, highlight} = createFlashDecorationTypes();
+  const { dim, highlight } = createFlashDecorationTypes();
 
   // 1. enter flash mode
-  await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
+  await enableFlashJumpState();
   // 2. set grey background to whole screen
   editor.setDecorations(dim, editor.visibleRanges);
 
   let lastRanges: vscode.Range[] | undefined;
   let lastPlaceholders: PlaceHolder[] = [];
+  let inputedChars: string[] = [];
 
   const typeCommand = vscode.commands.registerCommand(
     "type",
@@ -64,12 +127,10 @@ async function flash(editor: vscode.TextEditor) {
         highlight.dispose();
         lastPlaceholders.forEach((p) => p.decoration.dispose());
         lastPlaceholders = [];
-        await vscode.commands.executeCommand(
-          "setContext",
-          "flash-jump.active",
-          false
-        );
+        statusBarBlock.dispose();
+        await disableFlashJumpState();
       };
+
       const jump = (position: vscode.Position) => {
         if (editor.selection.isEmpty) {
           editor.selection = new vscode.Selection(position, position);
@@ -84,44 +145,35 @@ async function flash(editor: vscode.TextEditor) {
           vscode.TextEditorRevealType.InCenter
         );
       };
+
       if (lastPlaceholders.length === 1 && text === "\n") {
+        // jump into the position when it is unique and pressing enter
         jump(lastPlaceholders[0].position);
         cancel();
         return;
-      }
-      for (const ph of lastPlaceholders) {
-        if (ph.char === text) {
-          jump(ph.position);
-          cancel();
-          return;
+      } else {
+        // jump into the position of the matching placeholder
+        for (const ph of lastPlaceholders) {
+          if (ph.char === text) {
+            jump(ph.position);
+            cancel();
+            return;
+          }
         }
       }
+
+      inputedChars.push(text);
+      statusBarBlock.showText(inputedChars);
+
+      // search logic
       lastPlaceholders.forEach((p) => p.decoration.dispose());
       lastPlaceholders = [];
       const ranges: vscode.Range[] = [];
       if (!lastRanges) {
-        for (const range of editor.visibleRanges) {
-          const content = editor.document.getText(range);
-          let line = range.start.line;
-          let column = 0;
-          for (let i = 0; i < content.length; i++) {
-            if (content[i] === "\n") {
-              line++;
-              column = 0;
-            } else {
-              column++;
-            }
-            if (charEqual(content[i], text)) {
-              ranges.push(
-                new vscode.Range(
-                  new vscode.Position(line, column - 1),
-                  new vscode.Position(line, column)
-                )
-              );
-            }
-          }
-        }
+        // first search on whole screen
+        ranges.push(...findAllRangesByChar(editor, text));
       } else {
+        // other searches in lastRanges
         for (const range of lastRanges) {
           const nextCharRange = range.with({
             start: range.end,
@@ -133,10 +185,7 @@ async function flash(editor: vscode.TextEditor) {
           }
         }
       }
-      if (ranges.length === 0) {
-        cancel();
-        return;
-      }
+
       lastRanges = ranges;
       const highlightRanges: vscode.Range[] = [];
       const bannedChars = new Set<string>();
@@ -180,17 +229,18 @@ async function flash(editor: vscode.TextEditor) {
         editor.setDecorations(placeholderDecoration, [placeholderRange]);
       }
       editor.setDecorations(highlight, highlightRanges);
+
+      return true; // prevent default behavior
     }
   );
+
+  // re-assign cancel command
   cancel = async () => {
     dim.dispose();
     highlight.dispose();
     typeCommand.dispose();
-    await vscode.commands.executeCommand(
-      "setContext",
-      "flash-jump.active",
-      false
-    );
+    statusBarBlock.dispose();
+    await disableFlashJumpState();
   };
 }
 
