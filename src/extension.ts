@@ -32,21 +32,25 @@ type PlaceHolder = {
 
 const placeholderChars = "fjdksla;ghrueiwoqptyvncmx,z.b";
 
-const flashDecorationSet = {
-  dim: vscode.window.createTextEditorDecorationType({
-    textDecoration: `none; color: rgb(119, 119, 119);`,
-  }),
-  highlight: vscode.window.createTextEditorDecorationType({
-    backgroundColor: "rgb(30, 144, 255)",
-    color: "rgb(255, 255, 255)",
-  }),
+const createFlashDecorationTypes = () => {
+  return {
+    dim: vscode.window.createTextEditorDecorationType({
+      textDecoration: `none; color: rgb(119, 119, 119);`,
+    }),
+    highlight: vscode.window.createTextEditorDecorationType({
+      backgroundColor: "rgb(30, 144, 255)",
+      color: "rgb(255, 255, 255)",
+    }),
+  };
 };
 
 async function flash(editor: vscode.TextEditor) {
+  const {dim, highlight} = createFlashDecorationTypes();
+
   // 1. enter flash mode
   await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
   // 2. set grey background to whole screen
-  editor.setDecorations(flashDecorationSet.dim, editor.visibleRanges);
+  editor.setDecorations(dim, editor.visibleRanges);
 
   let lastRanges: vscode.Range[] | undefined;
   let lastPlaceholders: PlaceHolder[] = [];
@@ -54,10 +58,10 @@ async function flash(editor: vscode.TextEditor) {
   const typeCommand = vscode.commands.registerCommand(
     "type",
     ({ text }: { text: string }) => {
-      const cancel = async () => {
+      cancel = async () => {
         typeCommand.dispose();
-        flashDecorationSet.dim.dispose();
-        flashDecorationSet.highlight.dispose();
+        dim.dispose();
+        highlight.dispose();
         lastPlaceholders.forEach((p) => p.decoration.dispose());
         lastPlaceholders = [];
         await vscode.commands.executeCommand(
@@ -175,12 +179,12 @@ async function flash(editor: vscode.TextEditor) {
         });
         editor.setDecorations(placeholderDecoration, [placeholderRange]);
       }
-      editor.setDecorations(flashDecorationSet.highlight, highlightRanges);
+      editor.setDecorations(highlight, highlightRanges);
     }
   );
   cancel = async () => {
-    flashDecorationSet.dim.dispose();
-    flashDecorationSet.highlight.dispose();
+    dim.dispose();
+    highlight.dispose();
     typeCommand.dispose();
     await vscode.commands.executeCommand(
       "setContext",
