@@ -32,31 +32,38 @@ type PlaceHolder = {
 
 const placeholderChars = "fjdksla;ghrueiwoqptyvncmx,z.b";
 
-async function flash(editor: vscode.TextEditor) {
-  await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
-  const dim = vscode.window.createTextEditorDecorationType({
+const flashDecorationSet = {
+  dim: vscode.window.createTextEditorDecorationType({
     textDecoration: `none; color: rgb(119, 119, 119);`,
-  });
-  const highlight = vscode.window.createTextEditorDecorationType({
+  }),
+  highlight: vscode.window.createTextEditorDecorationType({
     backgroundColor: "rgb(30, 144, 255)",
     color: "rgb(255, 255, 255)",
-  });
-  editor.setDecorations(dim, editor.visibleRanges);
+  }),
+};
+
+async function flash(editor: vscode.TextEditor) {
+  // 1. enter flash mode
+  await vscode.commands.executeCommand("setContext", "flash-jump.active", true);
+  // 2. set grey background to whole screen
+  editor.setDecorations(flashDecorationSet.dim, editor.visibleRanges);
+
   let lastRanges: vscode.Range[] | undefined;
   let lastPlaceholders: PlaceHolder[] = [];
+
   const typeCommand = vscode.commands.registerCommand(
     "type",
     ({ text }: { text: string }) => {
-      cancel = async () => {
+      const cancel = async () => {
         typeCommand.dispose();
-        dim.dispose();
-        highlight.dispose();
+        flashDecorationSet.dim.dispose();
+        flashDecorationSet.highlight.dispose();
         lastPlaceholders.forEach((p) => p.decoration.dispose());
         lastPlaceholders = [];
         await vscode.commands.executeCommand(
           "setContext",
           "flash-jump.active",
-          false,
+          false
         );
       };
       const jump = (position: vscode.Position) => {
@@ -65,12 +72,12 @@ async function flash(editor: vscode.TextEditor) {
         } else {
           editor.selection = new vscode.Selection(
             editor.selection.anchor,
-            position,
+            position
           );
         }
         editor.revealRange(
           new vscode.Range(position, position),
-          vscode.TextEditorRevealType.InCenter,
+          vscode.TextEditorRevealType.InCenter
         );
       };
       if (lastPlaceholders.length === 1 && text === "\n") {
@@ -104,8 +111,8 @@ async function flash(editor: vscode.TextEditor) {
               ranges.push(
                 new vscode.Range(
                   new vscode.Position(line, column - 1),
-                  new vscode.Position(line, column),
-                ),
+                  new vscode.Position(line, column)
+                )
               );
             }
           }
@@ -122,11 +129,6 @@ async function flash(editor: vscode.TextEditor) {
           }
         }
       }
-      // if (ranges.length === 1) {
-      //   jump(ranges[0].end);
-      //   cancel();
-      //   return;
-      // }
       if (ranges.length === 0) {
         cancel();
         return;
@@ -159,11 +161,11 @@ async function flash(editor: vscode.TextEditor) {
         const placeholderDecoration = placeholder(placeholderChar);
         const placeholderRange = new vscode.Range(
           range.start,
-          range.start.translate(0, 1),
+          range.start.translate(0, 1)
         );
         const highlightRange = new vscode.Range(
           range.start.translate(0, 1),
-          range.end,
+          range.end
         );
         highlightRanges.push(highlightRange);
         lastPlaceholders.push({
@@ -173,17 +175,17 @@ async function flash(editor: vscode.TextEditor) {
         });
         editor.setDecorations(placeholderDecoration, [placeholderRange]);
       }
-      editor.setDecorations(highlight, highlightRanges);
-    },
+      editor.setDecorations(flashDecorationSet.highlight, highlightRanges);
+    }
   );
   cancel = async () => {
-    dim.dispose();
-    highlight.dispose();
+    flashDecorationSet.dim.dispose();
+    flashDecorationSet.highlight.dispose();
     typeCommand.dispose();
     await vscode.commands.executeCommand(
       "setContext",
       "flash-jump.active",
-      false,
+      false
     );
   };
 }
@@ -191,7 +193,7 @@ async function flash(editor: vscode.TextEditor) {
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("flash-jump.cancel", cancel_),
-    vscode.commands.registerTextEditorCommand("flash-jump.flash", flash),
+    vscode.commands.registerTextEditorCommand("flash-jump.flash", flash)
   );
 }
 

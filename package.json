@@ -1,12 +1,12 @@
 {
-  "name": "flash-jump",
-  "displayName": "Flash Jump",
+  "name": "vim-flash",
+  "displayName": "Vim Flash",
   "description": "Flash jump to anywhere in the editor",
-  "version": "0.0.4",
-  "publisher": "bzy-debug",
+  "version": "0.0.1",
+  "publisher": "youguanxinqing",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/bzy-debug-orgnization/vscode-extension-flash"
+    "url": "https://github.com/youguanxinqing/vim-flash"
   },
   "engines": {
     "vscode": "^1.97.0"
