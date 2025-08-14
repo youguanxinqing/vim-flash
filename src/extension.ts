@@ -15,18 +15,6 @@ function createLeaderDecoration(char: string): vscode.TextEditorDecorationType {
   });
 }
 
-const createFlashDecorationTypes = () => {
-  return {
-    dim: vscode.window.createTextEditorDecorationType({
-      textDecoration: `none; color: rgb(119, 119, 119);`,
-    }),
-    highlight: vscode.window.createTextEditorDecorationType({
-      backgroundColor: "rgb(30, 144, 255)",
-      color: "rgb(255, 255, 255)",
-    }),
-  };
-};
-
 let cancel: (() => Promise<void>) | undefined = undefined;
 
 async function cancel_() {
@@ -48,7 +36,7 @@ const candidate = {
   // attrs
   index: 0,
   chars: "fjdksla;ghrueiwoqptyvncmx,z.b",
-  // functions
+  // methods
   generator() {
     this.index = 0;
     return this;
@@ -66,12 +54,23 @@ const candidate = {
   },
 };
 
-async function enableFlashJumpState() {
+async function startVimFlash(editor: vscode.TextEditor) {
   await vscode.commands.executeCommand("setContext", "vim-flash.active", true);
-}
 
-async function disableFlashJumpState() {
-  await vscode.commands.executeCommand("setContext", "vim-flash.active", false);
+  const bgDecoration = vscode.window.createTextEditorDecorationType({
+    textDecoration: `none; color: rgb(119, 119, 119);`,
+  });
+  // set grey background to whole screen
+  editor.setDecorations(bgDecoration, editor.visibleRanges);
+
+  return async () => {
+    bgDecoration.dispose();
+    await vscode.commands.executeCommand(
+      "setContext",
+      "vim-flash.active",
+      false
+    );
+  };
 }
 
 function findAllRangesByChar(
@@ -104,6 +103,42 @@ function findAllRangesByChar(
   return ranges;
 }
 
+function findAllRangesByCharArray(
+  editor: vscode.TextEditor,
+  charArray: string[]
+): vscode.Range[] {
+  if (charArray.length === 0) {
+    return [];
+  }
+
+  // 先查第一个字符的所有位置
+  let ranges = findAllRangesByChar(editor, charArray[0]);
+
+  // 依次查找后续字符
+  for (let i = 1; i < charArray.length; i++) {
+    const nextChar = charArray[i];
+    const nextRanges: vscode.Range[] = [];
+    for (const range of ranges) {
+      // 下一个字符必须紧跟在当前 range 后面
+      const nextCharRange = new vscode.Range(
+        range.end,
+        range.end.translate(0, 1)
+      );
+      const char = editor.document.getText(nextCharRange);
+      if (charEqual(char, nextChar)) {
+        // 合并成更长的 range
+        nextRanges.push(new vscode.Range(range.start, nextCharRange.end));
+      }
+    }
+    ranges = nextRanges;
+    if (ranges.length === 0) {
+      break;
+    }
+  }
+
+  return ranges;
+}
+
 const statusBarBlock = {
   // attrs
   item: undefined as vscode.StatusBarItem | undefined,
@@ -127,31 +162,33 @@ const statusBarBlock = {
 const searchActionObj = {
   // attrs
   editor: undefined as vscode.TextEditor | undefined,
-  leaderDecoration: undefined as vscode.TextEditorDecorationType | undefined,
+  normalHighlightDecoration: undefined as
+    | vscode.TextEditorDecorationType
+    | undefined,
 
   currentRanges: [] as vscode.Range[],
 
   lastRanges: undefined as vscode.Range[] | undefined,
   lastPlaceholders: [] as PlaceHolder[],
-  // functions
-  mount({
-    editor,
-    leaderDecoration,
-  }: {
-    editor: vscode.TextEditor;
-    leaderDecoration: vscode.TextEditorDecorationType;
-  }) {
-    const obj = searchActionObj;
-    obj.editor = editor;
-    obj.leaderDecoration = leaderDecoration;
-    obj.lastRanges = undefined;
-    obj.lastPlaceholders = [];
+  // methods
+  mount(editor: vscode.TextEditor) {
+    this.editor = editor;
+
+    this.normalHighlightDecoration =
+      vscode.window.createTextEditorDecorationType({
+        backgroundColor: "rgb(30, 144, 255)",
+        color: "rgb(255, 255, 255)",
+      });
+    this.lastRanges = undefined;
+    this.lastPlaceholders = [];
   },
-  unmounted() {
-    const obj = searchActionObj;
-    obj.lastRanges = undefined;
-    obj.lastPlaceholders.forEach((p) => p.decoration.dispose());
-    obj.lastPlaceholders = [];
+  unmount() {
+    this.lastRanges = undefined;
+
+    this.lastPlaceholders.forEach((p) => p.decoration.dispose());
+    this.lastPlaceholders = [];
+
+    this.normalHighlightDecoration?.dispose();
   },
   tryFindCharDirectly(text: string): vscode.Position | undefined {
     const obj = searchActionObj;
@@ -168,47 +205,67 @@ const searchActionObj = {
       }
     }
   },
+  clearScreen() {
+    this.lastRanges = undefined;
+    this.lastPlaceholders.forEach((p) => p.decoration.dispose());
+    this.lastPlaceholders = [];
+  },
   findChar(char: string) {
-    if (!searchActionObj.editor) {
+    if (!this.editor) {
       throw new Error("Editor is not mounted");
     }
 
-    const obj = searchActionObj;
     // clear decorations last ranges
-    obj.lastPlaceholders.forEach((p) => p.decoration.dispose());
-    obj.lastPlaceholders = [];
+    this.lastPlaceholders.forEach((p) => p.decoration.dispose());
+    this.lastPlaceholders = [];
+    // clear current ranges
+    this.currentRanges = [];
 
-    if (!obj.lastRanges) {
-      obj.currentRanges.push(
-        ...findAllRangesByChar(obj.editor as vscode.TextEditor, char)
+    if (!this.lastRanges || this.lastRanges.length === 0) {
+      this.currentRanges.push(
+        ...findAllRangesByChar(this.editor as vscode.TextEditor, char)
       );
     } else {
-      for (const range of obj.lastRanges) {
+      for (const range of this.lastRanges) {
         const nextCharRange = range.with({
           start: range.end,
           end: range.end.translate(0, 1),
         });
-        const nextChar = obj.editor!.document.getText(nextCharRange);
+        const nextChar = this.editor!.document.getText(nextCharRange);
         if (charEqual(nextChar, char)) {
-          obj.currentRanges.push(range.union(nextCharRange));
+          this.currentRanges.push(range.union(nextCharRange));
         }
       }
     }
   },
+  reFindChars(inputedChars: string[]) {
+    if (!this.editor) {
+      throw new Error("Editor is not mounted");
+    }
+
+    this.lastRanges = undefined;
+
+    // clear decorations last ranges
+    this.lastPlaceholders.forEach((p) => p.decoration.dispose());
+    this.lastPlaceholders = [];
+
+    this.currentRanges = findAllRangesByCharArray(this.editor, inputedChars);
+  },
   highlightCurrentRange() {
-    const obj = searchActionObj;
-    if (!obj.editor) {
+    if (!this.editor) {
       throw new Error("Editor is not mounted");
     }
 
     // backup ranges
-    obj.lastRanges = obj.currentRanges;
+    this.lastRanges = this.currentRanges;
 
-    // collect duplicate char
+    // collect replicate char
     const bannedChars = new Set<string>();
-    for (const r of obj.currentRanges) {
+    for (const r of this.currentRanges) {
       const nextCharRange = new vscode.Range(r.end, r.end.translate(0, 1));
-      const nextChar = obj.editor.document.getText(nextCharRange).toLowerCase();
+      const nextChar = this.editor.document
+        .getText(nextCharRange)
+        .toLowerCase();
       bannedChars.add(nextChar);
     }
 
@@ -240,56 +297,72 @@ const searchActionObj = {
       this.editor!.setDecorations(placeholderDecoration, [placeholderRange]);
     }
 
-    this.editor!.setDecorations(this.leaderDecoration!, highlightRanges);
+    this.editor!.setDecorations(
+      this.normalHighlightDecoration!,
+      highlightRanges
+    );
   },
 };
 
 const inputedTextObj = {
+  // attrs
   data: [] as string[],
-  statusBarBlock,
-  mount() {
-    const obj = inputedTextObj;
-    obj.statusBarBlock.showText(obj.data);
+  statusBarBlock: {} as typeof statusBarBlock,
+  searchActionObj: {} as typeof searchActionObj,
+  // methods
+  mount({
+    statusBarBlock,
+    searchActionObj,
+  }: {
+    statusBarBlock: any;
+    searchActionObj: any;
+  }) {
+    this.statusBarBlock = statusBarBlock;
+    this.searchActionObj = searchActionObj;
+
+    this.statusBarBlock.showText(this.data);
   },
   addChar(char: string) {
-    const obj = inputedTextObj;
-    obj.data.push(char);
-    obj.statusBarBlock.showText(obj.data);
+    this.data.push(char);
+    this.statusBarBlock.showText(this.data);
+
+    this.searchActionObj.findChar(char);
+    this.searchActionObj.highlightCurrentRange();
   },
   popChar() {
-    const obj = inputedTextObj;
-    obj.data.pop();
-    obj.statusBarBlock.showText(obj.data);
+    this.data.pop();
+    this.statusBarBlock.showText(this.data);
+
+    // re-highlight current range
+    if (this.data.length > 0) {
+      this.searchActionObj.reFindChars(this.data);
+      this.searchActionObj.highlightCurrentRange();
+    } else {
+      this.searchActionObj.clearScreen();
+    }
   },
   unmount() {
-    const obj = inputedTextObj;
-    obj.data = [];
-    obj.statusBarBlock.dispose();
+    this.data = [];
+    this.statusBarBlock.dispose();
+    this.searchActionObj.unmount();
   },
 };
 
 async function flash(editor: vscode.TextEditor) {
-  const { dim, highlight } = createFlashDecorationTypes();
-
   // 1. enter flash mode
-  await enableFlashJumpState();
-  // 2. set grey background to whole screen
-  editor.setDecorations(dim, editor.visibleRanges);
+  const endVimFlash = await startVimFlash(editor);
+  // 2. mount search action object
+  searchActionObj.mount(editor);
   // 3. display '⚡' flag
-  inputedTextObj.mount();
-  // 4. mount search action object
-  searchActionObj.mount({ editor: editor, leaderDecoration: highlight });
+  inputedTextObj.mount({ statusBarBlock, searchActionObj });
 
   const typeCommand = vscode.commands.registerCommand(
     "type",
     ({ text }: { text: string }) => {
       cancel = async () => {
         typeCommand.dispose();
-        dim.dispose();
-        highlight.dispose();
-        searchActionObj.unmounted();
         inputedTextObj.unmount();
-        await disableFlashJumpState();
+        await endVimFlash();
       };
 
       const jump = (position: vscode.Position) => {
@@ -305,32 +378,27 @@ async function flash(editor: vscode.TextEditor) {
           new vscode.Range(position, position),
           vscode.TextEditorRevealType.InCenter
         );
+
+        return Promise.resolve();
       };
 
       // fast search
       const pos = searchActionObj.tryFindCharDirectly(text);
       if (pos) {
-        jump(pos);
-        cancel();
+        jump(pos).then(cancel);
         return;
       }
 
+      // slow search and highlight
       inputedTextObj.addChar(text);
-      // slow search
-      searchActionObj.findChar(text);
-      // highlight
-      searchActionObj.highlightCurrentRange();
     }
   );
 
   // re-assign cancel command
   cancel = async () => {
-    dim.dispose();
-    highlight.dispose();
     typeCommand.dispose();
-    searchActionObj.unmounted();
     inputedTextObj.unmount();
-    await disableFlashJumpState();
+    await endVimFlash();
   };
 }
 
@@ -342,10 +410,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("vim-flash.cancel", cancel_),
     vscode.commands.registerTextEditorCommand("vim-flash.jump", flash),
-    vscode.commands.registerTextEditorCommand(
-      "vim-flash.deleteChar",
-      deleteChar
-    )
+    vscode.commands.registerCommand("vim-flash.deleteChar", deleteChar)
   );
 }
 
