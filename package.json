@@ -21,19 +21,28 @@
   "contributes": {
     "commands": [
       {
-        "command": "flash-jump.flash",
-        "title": "Flash Jump: start"
+        "command": "vim-flash.jump",
+        "title": "Vim Flash: start"
       },
       {
-        "command": "flash-jump.cancel",
-        "title": "Flash Jump: cancel"
+        "command": "vim-flash.cancel",
+        "title": "Vim Flash: cancel"
+      },
+      {
+        "command": "vim-flash.deleteChar",
+        "title": "Vim Flash: delete character"
       }
     ],
     "keybindings": [
       {
         "key": "escape",
-        "command": "flash-jump.cancel",
-        "when": "editorTextFocus && flash-jump.active"
+        "command": "vim-flash.cancel",
+        "when": "editorTextFocus && vim-flash.active"
+      },
+      {
+        "key": "backspace",
+        "command": "vim-flash.deleteChar",
+        "when": "editorTextFocus && vim-flash.active"
       }
     ]
   },
