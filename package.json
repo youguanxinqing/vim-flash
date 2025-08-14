@@ -1,12 +1,12 @@
 {
-  "name": "flash-jump",
-  "displayName": "Flash Jump",
+  "name": "vim-flash",
+  "displayName": "Vim Flash",
   "description": "Flash jump to anywhere in the editor",
-  "version": "0.0.4",
-  "publisher": "bzy-debug",
+  "version": "0.0.1",
+  "publisher": "youguanxinqing",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/bzy-debug-orgnization/vscode-extension-flash"
+    "url": "https://github.com/youguanxinqing/vim-flash"
   },
   "engines": {
     "vscode": "^1.97.0"
@@ -21,19 +21,28 @@
   "contributes": {
     "commands": [
       {
-        "command": "flash-jump.flash",
-        "title": "Flash Jump: start"
+        "command": "vim-flash.jump",
+        "title": "Vim Flash: jump"
       },
       {
-        "command": "flash-jump.cancel",
-        "title": "Flash Jump: cancel"
+        "command": "vim-flash.cancel",
+        "title": "Vim Flash: cancel"
+      },
+      {
+        "command": "vim-flash.deleteChar",
+        "title": "Vim Flash: delete character"
       }
     ],
     "keybindings": [
       {
         "key": "escape",
-        "command": "flash-jump.cancel",
-        "when": "editorTextFocus && flash-jump.active"
+        "command": "vim-flash.cancel",
+        "when": "editorTextFocus && vim-flash.active"
+      },
+      {
+        "key": "backspace",
+        "command": "vim-flash.deleteChar",
+        "when": "editorTextFocus && vim-flash.active"
       }
     ]
   },
