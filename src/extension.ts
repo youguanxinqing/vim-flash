@@ -151,8 +151,7 @@ const statusBarBlock = {
     statusBarBlock.dispose();
 
     statusBarBlock.item = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      3000
+      vscode.StatusBarAlignment.Left
     );
     statusBarBlock.item.text = "⚡" + inputedChars.join("");
     statusBarBlock.item.show();

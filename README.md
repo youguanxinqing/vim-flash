@@ -1,15 +1,14 @@
-# Flash Jump
+# Vim Flash (vscode extension)
 
-Flash jump to anywhere in the editor. Inspired by the [neovim flash extension](https://github.com/folke/flash.nvim)
+Flash jump to anywhere in the editor. Inspired by the [neovim flash extension](https://github.com/folke/flash.nvim) and [vscode-extension-flash](https://github.com/bzy-debug-orgnization/vscode-extension-flash)
 
-<video controls muted>
-  <source src="https://github.com/bzy-debug-orgnization/vscode-extension-flash/raw/refs/heads/main/assets/example.mp4" type="video/mp4"/>
-</video>
+![demo](./assets/example.mp4)
 
 ## Features
 
-- `flash-jump.flash`: start flash jump
-- `flash-jump.cancel`: cancel flash jump during input, biding to `escape` by default
+- `vim-flash.jump`: start flash jump
+- `vim-flash.cancel`: cancel flash jump during input, binding to `escape` by default
+- `vim-flash.deleteChar`: delete one char inputed every time and re-highlight remained input
 
 ## For vscode vim users
 
@@ -23,14 +22,20 @@ Flash jump to anywhere in the editor. Inspired by the [neovim flash extension](h
 
    This setting also [improves vscode vim's performance](https://github.com/VSCodeVim/Vim?tab=readme-ov-file#-faq), you might find it helpful to enable it even if you don't use this extension
 
-1. If you find that `escape` shortcut of `flash-jump.cancel` does not work, app following to the end of your `keybindings.json`:
+2. If you find that `escape` shortcut of `vim-flash.cancel` does not work, add following to the end of your `keybindings.json`:
 
    ```json
      {
        "key": "escape",
        "command": "flash-jump.cancel",
-       "when": "editorTextFocus && flash-jump.active"
+       "when": "editorTextFocus && vim-flash.active"
      },
    ```
 
    The order matters here since the latter keybindings have higher priorities.
+
+3. `backspace` does work after changing `when` of `extension.vim_backspace` shortcut, adding `!vim-flash.active`:
+
+   ```plain
+   "when": "editorTextFocus && vim.active && !inDebugRepl && !vim-flash.active"
+   ```

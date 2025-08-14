@@ -22,7 +22,7 @@
     "commands": [
       {
         "command": "vim-flash.jump",
-        "title": "Vim Flash: start"
+        "title": "Vim Flash: jump"
       },
       {
         "command": "vim-flash.cancel",
