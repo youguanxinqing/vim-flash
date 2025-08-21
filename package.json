@@ -2,7 +2,7 @@
   "name": "vim-flash",
   "displayName": "Vim Flash",
   "description": "Flash jump to anywhere in the editor",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "youguanxinqing",
   "license": "MIT",
   "repository": {

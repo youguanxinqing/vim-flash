@@ -3,8 +3,9 @@
 Flash jump to anywhere in the editor. Inspired by the [neovim flash extension](https://github.com/folke/flash.nvim) and [vscode-extension-flash](https://github.com/bzy-debug-orgnization/vscode-extension-flash)
 
 https://github.com/user-attachments/assets/dbb8dfe1-5f58-4e43-8475-a582595cae59
-
-
+<video controls muted>
+  <source src="https://github.com/user-attachments/assets/dbb8dfe1-5f58-4e43-8475-a582595cae59" type="video/mp4"/>
+</video>
 
 ## Features
 

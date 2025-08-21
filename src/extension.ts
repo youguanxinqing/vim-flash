@@ -347,7 +347,15 @@ const inputedTextObj = {
   },
 };
 
+let flashActive = false;
+
 async function flash(editor: vscode.TextEditor) {
+  // check active
+  if (flashActive) {
+    return;
+  }
+  flashActive = true;
+
   // 1. enter flash mode
   const endVimFlash = await startVimFlash(editor);
   // 2. mount search action object
@@ -361,6 +369,7 @@ async function flash(editor: vscode.TextEditor) {
       cancel = async () => {
         typeCommand.dispose();
         inputedTextObj.unmount();
+        flashActive = false;
         await endVimFlash();
       };
 
@@ -381,15 +390,19 @@ async function flash(editor: vscode.TextEditor) {
         return Promise.resolve();
       };
 
-      // fast search
-      const pos = searchActionObj.tryFindCharDirectly(text);
-      if (pos) {
-        jump(pos).then(cancel);
-        return;
+      try {
+        // fast search
+        const pos = searchActionObj.tryFindCharDirectly(text);
+        if (pos) {
+          jump(pos).then(cancel);
+          return;
+        }
+        // slow search and highlight
+        inputedTextObj.addChar(text);
+      } catch (error) {
+        // clean all resources if panic
+        cancel();
       }
-
-      // slow search and highlight
-      inputedTextObj.addChar(text);
     }
   );
 
@@ -397,6 +410,7 @@ async function flash(editor: vscode.TextEditor) {
   cancel = async () => {
     typeCommand.dispose();
     inputedTextObj.unmount();
+    flashActive = false;
     await endVimFlash();
   };
 }
